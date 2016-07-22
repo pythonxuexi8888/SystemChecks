@@ -1,0 +1,241 @@
+#!/usr/bin/python
+#from __future__ import print_function
+import sys
+import socket
+import time
+import datetime
+import logging
+import configparser
+from OpenSSL import SSL
+from OpenSSL import crypto
+import smtplib
+from email.MIMEMultipart import MIMEMultipart
+from email.MIMEText import MIMEText
+import logging
+import codecs
+
+port = 443
+expire_days = " "
+NOW = time.strftime("%c")
+dateandtime = time.strftime("%c")
+update = " "
+
+def logalerts(update):
+    logfile = '/var/log/ssl_cert_validation.log'
+    wrtite2file = open(logfile, 'a')
+    if not update:
+        STAUTS="INFO"
+    else:
+        print >>wrtite2file,dateandtime, update
+
+def email_critical(host):
+    issuers = get_cert_issuer(host)
+    issuers = list(issuers)
+    cert_issuer = issuers[0]
+    cert_serialno = issuers[1]
+    cert_commonName = issuers[2]
+    sender = "srinivas.ashok@itaas.dimensiondata.com"
+    receivers = "srinivas.ashok@itaas.dimensiondata.com"
+
+    msg = MIMEMultipart()
+    msg['From'] = sender
+    msg['To'] = receivers
+    msg['Subject'] = "SSL Certification Expire update"
+    body = """
+    <html>
+    <body>
+    <p>
+    <font size="4" face="Courier" color="red">
+    <b>CRITICAL: The SSL certificate for %s (CN: %s) has expired!</b>
+    <br>
+    <font size="4" face="Courier" color="orchid">
+    <b>Previous Certification Issuer: %s</b>
+    <br>
+    <b>Serial No of certificate: %s</b>
+    <br>
+    <font size="4" face="Courier" color="salmon">
+    <b>Please initiate the SSL certificate reneval process soon...</b>
+    <br>
+    <b>Please <a href="https://10.118.19.13/cgi-bin/ssl_cert_validate"> Click Here </a>for more info</b>
+    <font size="4" face="Courier" color="salmon">
+    </font>
+    </p>
+    </body>
+    </html>
+    """% (host, cert_commonName, cert_issuer, cert_serialno)
+
+    try:
+        msg.attach(MIMEText(body, 'html'))
+        server = smtplib.SMTP('localhost')
+        text = msg.as_string()
+        server.sendmail(sender, receivers, text)
+        server.quit()
+    except smtplib.SMTPException:
+        print ("Error: unable to send email")
+
+def email_warning(host):
+    issuers = get_cert_issuer(host)
+    issuers = list(issuers)
+    cert_issuer = issuers[0]
+    cert_serialno = issuers[1]
+    cert_commonName = issuers[2]
+    sender = "srinivas.ashok@itaas.dimensiondata.com"
+    receivers = "srinivas.ashok@itaas.dimensiondata.com"
+
+    msg = MIMEMultipart()
+    msg['From'] = sender
+    msg['To'] = receivers
+    msg['Subject'] = "SSL Certification Expire update"
+    body = """
+    <html>
+    <body>
+    <p>
+    <font size="4" face="Courier" color="gold">
+    <b>WARNING: The SSL certificate for %s (CN: %s) expiring after %d days</b>
+    <br>
+    <font size="4" face="Courier" color="orchid">
+    <b>Previous Certification Issuer: %s</b>
+    <br>
+    <b>Serial No of certificate: %s</b>
+    <br>
+    <font size="4" face="Courier" color="salmon">
+    <b>Please initiate the SSL certificate reneval process soon...</b>
+    <br>
+    <b>Please<a href="https://10.118.19.13/cgi-bin/ssl_cert_validate"> Click Here </a>for more info</b>
+    <font size="4" face="Courier" color="salmon">
+    </font>
+    </p>
+    </body>
+    </html>
+    """% (host, cert_commonName, expire_days, cert_issuer, cert_serialno)
+
+    try:
+        msg.attach(MIMEText(body, 'html'))
+        server = smtplib.SMTP('localhost')
+        text = msg.as_string()
+        server.sendmail(sender, receivers, text)
+        server.quit()
+    except smtplib.SMTPException:
+        print ("Error: unable to send email")
+
+def get_cert_issuer(host):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    ctx = SSL.Context(SSL.SSLv23_METHOD)
+    x509 = None
+    try:
+        s.connect((host, port))
+        cnx = SSL.Connection(ctx, s)
+        cnx.set_tlsext_host_name(host)
+        cnx.set_connect_state()
+        cnx.do_handshake()
+        x509 = cnx.get_peer_certificate()
+        s.close()
+    except Exception:
+        return "NotFound"
+    issuer = x509.get_issuer()
+    serial = x509.get_serial_number()
+    issuer_corp = x509.get_issuer().organizationName
+    issuer_url = x509.get_issuer().organizationalUnitName
+    issuer_x509 = x509.get_issuer().commonName
+    server_name = x509.get_subject().commonName
+    server_name_ok = server_name == host
+    return issuer_corp, serial, server_name
+
+def ssl_cert_check(host):
+    ctx = SSL.Context(SSL.SSLv23_METHOD)
+    global update
+    issuer = get_cert_issuer(host)
+    issuer = list(issuer)
+    cert_issuer = issuer[0]
+    try:
+        sock = SSL.Connection(ctx, socket.socket(socket.AF_INET, socket.SOCK_STREAM))
+        sock.connect((host, port))
+        try:
+            sock.send("\x04")
+            sock.shutdown()
+            peer_cert=sock.get_peer_certificate()
+            sock.close()
+        except SSL.Error,e:
+            raise e
+
+        cur_date = datetime.datetime.utcnow()
+        cert_nbefore = datetime.datetime.strptime(peer_cert.get_notBefore(),'%Y%m%d%H%M%SZ')
+        cert_nafter = datetime.datetime.strptime(peer_cert.get_notAfter(),'%Y%m%d%H%M%SZ')
+
+        global expire_days
+        expire_days = int((cert_nafter - cur_date).days)
+        if cert_nbefore > cur_date:
+            output = "Error: The certs are invalid"
+            result = "<font color=red>" + output
+            logalerts("%s ERROR: The certs are invalid"% (host))
+        elif expire_days <= 0:
+            output = "CRITICAL: SSL certs expired %s days ago"% expire_days
+            email_critical(host)
+            result = "<font color=red>" + output
+            logalerts("%s %s CRITICAL: Expired %s days back"% (host,cert_issuer,expire_days))
+        elif expire_days <= 90:
+            output = "WARNING: SSL certs going to expire after %s days"% (expire_days)
+            email_warning(host)
+            result = "<font color=yellow>" + output
+            logalerts("%s %s WARNING: Expire after %s days"% (host,cert_issuer,expire_days))
+        else:
+            output = "INFO: SSL certs are valid till %s days"% (expire_days)
+            result = "<font color=#52D017>" + output
+    except socket.error, exc:
+        output = "%s to host" % exc
+        result = "<font color=red>" + output
+        logalerts("%s ERROR: Connection refused"% (host))
+    return result
+    
+def PutInHtml():
+    print("Content-encoding: none\nContent-Type: text/html\n\n")
+    print("""<html>
+    <head>
+    <title>Open SSL Cert Expiry Check Tool</title>
+    <style type="text/css">
+     p
+     {
+        border: 2px slid black;
+        max-height: 2000px;
+        max-width:  1000px;
+        overflow: auto;
+        float: left;
+     }
+    </style>
+    <style type="text/css">
+    tr { background-color: #000000}
+              .initial { background-color: #000000; color:#FFFFFF }
+              .normal { background-color: #000000 }
+              .highlight { background-color: #008000 }
+    div {width:100px;float:left;border:1px red solid;padding:10px;}
+    </style>
+    <meta http-equiv=Pragma content=no-cache>
+    <meta http-equiv=expires content=0>
+    </head>
+    <body style=color:white;background-color:#008000;font-family:sans-serif>
+    <hr color=gray><font size=6>Open SSL Cert Expiry Check Tool</font><hr color=gray><br>
+    """)
+    print("""
+    <table border=1 cellpadding=10px>
+    <tr>
+    <td align=center>Domain</td>
+    <td align=center>Expiry Date and Time </td>
+    </tr>
+    """)
+
+def main(host):
+    result = ssl_cert_check(host)
+    print("<tr onMouseOver=\"this.className='highlight'\" onMouseOut=\"this.className='normal'\"><td align=\"center\">" + host + "</td> \
+        <td align=\"center\">" + result + "</td></tr>")
+    print("""</body></html>""")
+
+if __name__ == "__main__":
+    config = configparser.RawConfigParser(allow_no_value=True)
+    config.optionxform = str
+    config.sections()
+    config.read('url.conf')
+    URLs = config['urls']
+    PutInHtml()
+    for lines in URLs:
+        host = lines.strip()
+        main(host)
