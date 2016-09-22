@@ -86,9 +86,14 @@ for line in lines:
 
     if ret_code == 0:
         print colors.OKGREEN + "ping to", line, "is OK" , packets + colors.ENDC
+	logalerts("Ping to %s is OK %s"% (line, packets))
     elif ret_code == 2:
         print colors.FAIL + "no response from", line, packets + colors.ENDC
+	email_critical(line)
+	logalerts("No response from %s %s"% (line, packets))
     else:
         print colors.FAIL + "Ping to", line, "failed", packets + colors.ENDC
+	email_critical(line)
+	logalerts("Ping to %s is failed %s"% (line, packets))
 
 hostsFile.close()
