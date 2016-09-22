@@ -61,8 +61,8 @@ hostsFile = open(hosts, "r")
 lines = hostsFile.readlines()
 for line in lines:
     line = line.strip( )
-    args = ["ping", "-c", "1", "-l", "1", "-s", "1", "-W", "1", line]
-    args2 = ["ping", "-c", "1", "-q", line]
+    args = ["ping", "-c", "2", "-l", "1", "-s", "1", "-W", "1", line]
+    args2 = ["ping", "-c", "2", "-q", line]
     ret_code = subprocess.call(args,
         stdout = open(os.devnull, 'w'),
         stderr = open(os.devnull, 'w')
