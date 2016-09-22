@@ -6,6 +6,13 @@ from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
 import time
 
+
+class colors:
+    OKGREEN = '\033[92m'
+    FAIL = '\033[91m'
+    ENDC = '\033[0m'
+
+    
 NOW = time.strftime("%c")
 dateandtime = time.strftime("%c")
 update = " "
@@ -55,20 +62,33 @@ lines = hostsFile.readlines()
 for line in lines:
     line = line.strip( )
     args = ["ping", "-c", "1", "-l", "1", "-s", "1", "-W", "1", line]
+    args2 = ["ping", "-c", "2", "-q", line]
     ret_code = subprocess.call(args,
         stdout = open(os.devnull, 'w'),
         stderr = open(os.devnull, 'w')
     )
+    p = subprocess.Popen(
+        args2,
+        stdout = subprocess.PIPE,
+        stderr = subprocess.PIPE
+    )
+
+    out, error = p.communicate()
+    #print str(re.findall(r"\' '% packet loss[\w]*", out))
+    #print str(re.findall('\[received,\]\s?(.+?)\s?\[packet loss\]', out))
+    #packet = ostr(re.findall('\[received,\]\s?(.+?)\s?\[packet loss\]', out))
+    out = str(out)
+    packet = out.rsplit('received,', 1)[1]
+    packets = packet.rsplit(', time', 1)[0]
+
+    if not packets:
+        packets = "packets loss missing"
+
     if ret_code == 0:
-        print "ping to", line, "is OK"
-        logalerts("Ping to %s is OK"% (line))
+        print colors.OKGREEN + "ping to", line, "is OK" , packets + colors.ENDC
     elif ret_code == 2:
-        print "no response from", line
-        email_critical(line)
-        logalerts("No response from %s"% (line))
+        print colors.FAIL + "no response from", line, packets + colors.ENDC
     else:
-        print "Ping to", line, "failed"
-        email_critical(line)
-        logalerts("Ping to %s is failed"% (line))
+        print colors.FAIL + "Ping to", line, "failed", packets + colors.ENDC
 
 hostsFile.close()
