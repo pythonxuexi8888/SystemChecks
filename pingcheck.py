@@ -12,7 +12,7 @@ class colors:
     FAIL = '\033[91m'
     ENDC = '\033[0m'
 
-    
+
 NOW = time.strftime("%c")
 dateandtime = time.strftime("%c")
 update = " "
@@ -39,11 +39,11 @@ def email_critical(line):
     <body>
     <p>
     <font size="4" face="Courier" color="red">
-    <b>No response from host or ping failed to %s</b>
+    <b>%s : No response from host or ping failed to %s</b>
     </p>
     </body>
     </html>
-    """% (line)
+    """% (dateandtime, line)
 
     try:
         msg.attach(MIMEText(body, 'html'))
@@ -62,7 +62,7 @@ lines = hostsFile.readlines()
 for line in lines:
     line = line.strip( )
     args = ["ping", "-c", "1", "-l", "1", "-s", "1", "-W", "1", line]
-    args2 = ["ping", "-c", "2", "-q", line]
+    args2 = ["ping", "-c", "1", "-q", line]
     ret_code = subprocess.call(args,
         stdout = open(os.devnull, 'w'),
         stderr = open(os.devnull, 'w')
@@ -86,14 +86,14 @@ for line in lines:
 
     if ret_code == 0:
         print colors.OKGREEN + "ping to", line, "is OK" , packets + colors.ENDC
-	logalerts("Ping to %s is OK %s"% (line, packets))
+        logalerts("Ping to %s is OK %s"% (line, packets))
     elif ret_code == 2:
         print colors.FAIL + "no response from", line, packets + colors.ENDC
-	email_critical(line)
-	logalerts("No response from %s %s"% (line, packets))
+        email_critical(line)
+        logalerts("No response from %s %s"% (line, packets))
     else:
         print colors.FAIL + "Ping to", line, "failed", packets + colors.ENDC
-	email_critical(line)
-	logalerts("Ping to %s is failed %s"% (line, packets))
+        email_critical(line)
+        logalerts("Ping to %s is failed %s"% (line, packets))
 
 hostsFile.close()
