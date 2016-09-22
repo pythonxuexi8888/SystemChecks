@@ -26,7 +26,7 @@ def email_critical(line):
     msg = MIMEMultipart()
     msg['From'] = sender
     msg['To'] = receivers
-    msg['Subject'] = "SSL Certification Expire update"
+    msg['Subject'] = "CRITICAL: JNB01 PING test results"
     body = """
     <html>
     <body>
