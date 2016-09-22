@@ -61,7 +61,6 @@ for line in lines:
     )
     if ret_code == 0:
         print "ping to", line, "is OK"
-        email_critical(line)
         logalerts("Ping to %s is OK"% (line))
     elif ret_code == 2:
         print "no response from", line
