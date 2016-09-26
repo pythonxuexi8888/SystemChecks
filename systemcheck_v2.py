@@ -26,6 +26,8 @@ parser.add_option("-d", "--dcname", dest='dc information', action='store_true', 
 (options, args) = parser.parse_args()
 
 def Help():
+    """ Usage: [ options ] for the command line arguments pass
+    """
     if len(sys.argv) < 3:
         parser.print_help()
         sys.exit(1)
@@ -53,12 +55,10 @@ DCTZ = {"AF": 'SAST', "AP": 'JST', "AU": 'AEST', "CA": 'EDT', "AC": 'AEST',
 GetMonth = {"Jan": 1, "Feb": 2, "Mar": 3, "Apr": 4, "May": 5, "Jun": 6,
             "Jul": 7, "Aug": 8, "Sep": 9, "Oct": 10, "Nov": 11, "Dec": 12}
 
-""" Defined a class and its variables for font colour,
-these class variables used in Reporting functions like ReportInfo, ReportWarn, ReportError and ReportDebug below
-"""
-
 class colors:
-
+    """ Defined a class and its variables for font colour,
+    these class variables used in Reporting functions like ReportInfo, ReportWarn, ReportError and ReportDebug below
+    """
     HEADER = '\033[95m'
     BLUE = '\033[94m'
     GREEN = '\033[92m'
@@ -66,25 +66,31 @@ class colors:
     FAIL = '\033[91m'
     ENDC = '\033[0m'
 
-""" Defined a functions to report the STD OUT on your screen
-"""
-
 def ReportInfo(info):
+    """ Defined a functions to report the STD OUT on your screen
+    """
     print colors.GREEN + "[INFORMATION]: %s" % (info) + colors.ENDC
 
 def ReportWarn(warn):
+    """ Defined a functions to report the STD OUT on your screen
+    """
     print colors.WARNING + "[WARNING]: %s" % (warn) + colors.ENDC
 
 def ReportError(error):
+    """ Defined a functions to report the STD OUT on your screen
+    """
     print colors.FAIL + "[ERROR]: %s" % (error) + colors.ENDC
 
 def ReportDebug(debug):
+    """ Defined a functions to report the STD OUT on your screen
+    """
     print colors.BLUE + "[DEBUG]: %s" % (debug) + colors.ENDC
 
-""" Defined a function which prompt the script executer to handle or verify the below checks manually
-    """
+
 
 def GeneralInfo():
+    """ Defined a function which prompt the script executer to handle or verify the below checks manually
+    """
     C = header()
     C.PrintHeader(" MANUAL ATTENTION REQUIRED ", "            Make sure you are validated below checks", 2)
 
@@ -93,9 +99,8 @@ def GeneralInfo():
     ReportWarn("Make sure you completed the cluster failure and fencing test if this is cluster")
     ReportWarn("Make sure you configured valid probes or checks at nimsoft server")
 
-""" Prints the header information """
-
 class header:
+    """ Prints the header information """
     def PrintHeader(self, head, comment, wait):
         self.head = head
         self.comment = comment
@@ -115,9 +120,9 @@ class header:
 
 # System checks function starts from here.
 
-""" A Class and method to find the what apps running on server
-"""
 class GetApps:
+    """ A Class and method to find the what apps running on server
+    """
     def CheckApps(self):
         apps = {'ccdb': "DB", 'xo': "XOPS"}
         for key, value in apps.iteritems():
@@ -133,9 +138,9 @@ class GetApps:
         else:
             ReportInfo("This is a %s server" % APP)
 
-""" A function which do ping test to the host
-"""
 def CheckPing(host):
+    """ A function which do ping test to the host
+    """
     ret_code = subprocess.call(['ping', '-c', '5', '-W', '3', host],
                                stdout=open(os.devnull, 'w'),stderr=open(os.devnull, 'w'))
     if ret_code == 0:
@@ -143,9 +148,9 @@ def CheckPing(host):
     else:
         ReportError("Ping test failed")
 
-""" A function to check the SE linux status
-"""
 def CheckSELinux():
+    """ A function to check the SE linux status
+    """
     p = subprocess.Popen("getenforce", shell=True, stdout=subprocess.PIPE)
     output = p.communicate()[0]
     output = output.strip()
@@ -155,10 +160,9 @@ def CheckSELinux():
     else:
         ReportError("SE Linux is set to %s"% output)
 
-""" A function which check the port 443 opened for Chef-Server
-"""
-
 def CheckPort443():
+    """ A function which check the port 443 opened for Chef-Server
+    """
     port = 443
     HOST = CheckChefCfg()
 
@@ -186,13 +190,12 @@ def CheckPort443():
         ReportError("CHECK PORT 443: Couldn't connect to server,can't check port 443")
         sys.exit()
 
-
-""" A function to check chef-client configurations files
-"""
-
 def CheckChefCfg():
+    """ A function to check chef-client configurations files
+    """
     FILE = '/etc/chef/client.rb'
     if os.path.isfile(FILE):
+        ReportInfo("chef-client is configured and client.rb found")
         for line in open(FILE, 'r'):
             if "chef_server_url" in line:
                 chef_server = line
@@ -203,11 +206,9 @@ def CheckChefCfg():
     else:
         ReportWarn("chef-client not configured %s No such file" % FILE)
 
-""" A function to check the chef-client service
-"""
-
 def CheckChefRuns():
-
+    """ A function to check the chef-client service
+    """
     if osvers == '5':
         FILE = '/etc/init.d/chef-client'
         if os.path.isfile(FILE):
@@ -249,14 +250,10 @@ def CheckChefRuns():
     else:
         ReportError("CHECK chef-client service: OS version %s does not match" % osvers)
 
-
-""" A class and its methods to check the Network bonding configurations
-"""
-
 class CheckNetBondCfg:
-
+    """ A class and its methods to check the Network bonding configurations
+    """
     def BondMasterFile(self):
-
         BONDGMASFILE = '/sys/class/net/bonding_masters'
         if os.path.exists(BONDGMASFILE):
             f = open(BONDGMASFILE, 'r')
@@ -312,12 +309,9 @@ class CheckNetBondCfg:
         else:
             ReportError("No bond interfaces found from ifconfig")
 
-
-""" A function to check the last patch update on the server
-"""
-
 def CheckPatchUpdate():
-
+    """ A function to check the last patch update on the server
+    """
     RPMDAY = subprocess.Popen("rpm -qa --last|head -1|awk '{print $3}'", shell=True,stdout=subprocess.PIPE).stdout.read()
     RPMMONTH = subprocess.Popen("rpm -qa --last|head -1|awk '{print $4}'", shell=True,stdout=subprocess.PIPE).stdout.read()
     RPMYEAR = subprocess.Popen("rpm -qa --last|head -1|awk '{print $5}'", shell=True,stdout=subprocess.PIPE).stdout.read()
@@ -340,12 +334,9 @@ def CheckPatchUpdate():
     else:
         ReportDebug("No info found on system patch update, please debug")
 
-
-""" A function to check the logrotate is configured and enabled
-"""
-
 def CheckLogrotate():
-
+    """ A function to check the logrotate is configured and enabled
+    """
     FILE = '/etc/logrotate.conf'
     if os.path.isfile(FILE):
         CHECK  = subprocess.Popen("egrep '^compress|^#compress' /etc/logrotate.conf",shell=True,stdout=subprocess.PIPE).stdout.read()
@@ -359,11 +350,9 @@ def CheckLogrotate():
     else:
         ReportError("Log rotate not condfigured %s No such file" % FILE)
 
-""" A class and methods to check OSSEC configuration
-"""
-
 class Ossec:
-
+    """ A class and methods to check OSSEC configuration
+    """
     def CheckOssecCfg(self):
         FILE = '/var/ossec/etc/ossec.conf'
         cmd = "grep server-ip /var/ossec/etc/ossec.conf|cut -d'>' -f2|cut -d'<' -f1"
@@ -393,12 +382,9 @@ class Ossec:
         else:
             ReportError("OSSEC CHECK: The config file %s not found"% FILE)
 
-
-""" A function to check the syslog or rsyslog is configured and service enabled
-"""
-
 def CheckSyslog():
-
+    """ A function to check the syslog or rsyslog is configured and service enabled
+    """
     if osvers == '5':
         FILE = '/etc/syslog.conf'
         if os.path.isfile(FILE):
@@ -446,12 +432,9 @@ def CheckSyslog():
     else:
         ReportError("OS version %s not match" % osvers)
 
-
-""" A class and its methods to check the NTP configuration and service
-"""
-
 class CheckNtpCfg:
-
+    """ A class and its methods to check the NTP configuration and service
+    """
     def CheckNtpService(self):
 
         if osvers == '5' or osvers == '6':
@@ -532,10 +515,9 @@ class CheckNtpCfg:
         else:
             ReportError("NTP servers are not correct")
 
-""" A class and methods to check Nimsoft configuration
-"""
-
 class NimsoftCfg:
+    """ A class and methods to check Nimsoft configuration
+    """
     def CheckProbes(self):
         cmd = "ps -ef|grep nimbus|egrep -v 'grep|nimsoft'|awk '{print $8}'|cut -d'(' -f2|cut -d')' -f1"
         C = GetApps()
@@ -599,11 +581,9 @@ class NimsoftCfg:
         else:
             ReportError("NIMBUS CHECK: nimsoft configuration is invalid, no robot.cfg file found")
 
-
-""" A function to check the httpd service
-"""
-
 def CheckHttpService():
+    """ A function to check the httpd service
+    """
     C = GetApps()
     APP = C.CheckApps()
 
@@ -638,6 +618,7 @@ def CheckHttpService():
         ReportInfo("This is DB server, no HTTPD service required")
 
 def CheckBackupCfg():
+    """ A function to check backup configuration"""
     C = GetApps()
     GETAPP = C.CheckApps()
 
@@ -692,7 +673,7 @@ def CheckBackupCfg():
         ReportDebug("This is server is not DB nor XOPS, please debug")
 
 def LumensionService():
-
+    """A function to check the Lumension client configuration"""
     if os.path.isfile("/etc/init.d/patchagent"):
         cmd = "/etc/init.d/patchagent status"
         service = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE).stdout.read()
@@ -708,6 +689,7 @@ def LumensionService():
         ReportError("Lumension client is not installed on the server")
 
 def CactiInfoXops():
+    """A function to check the Cacti configuration"""
     IP = socket.gethostbyname(socket.gethostname())
     C = GetApps()
     APP = " "
@@ -738,11 +720,9 @@ def CactiInfoXops():
     else:
         APP = 'DB'
 
-""" A main execution or the place where interpreter starts
-"""
-
 if __name__ == '__main__':
-
+    """ A main execution or the place where interpreter starts
+    """
     Help()
     GeneralInfo()
     C = header()
