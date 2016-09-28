@@ -1,18 +1,14 @@
 #!/usr/bin/python
-#from __future__ import print_function
 import sys
 import socket
 import time
 import datetime
-import logging
 import configparser
 from OpenSSL import SSL
 from OpenSSL import crypto
 import smtplib
 from email.MIMEMultipart import MIMEMultipart
 from email.MIMEText import MIMEText
-import logging
-import codecs
 
 port = 443
 expire_days = " "
@@ -56,7 +52,7 @@ def email_critical(host):
     <font size="4" face="Courier" color="salmon">
     <b>Please initiate the SSL certificate reneval process soon...</b>
     <br>
-    <b>Please <a href="https://10.118.19.13/cgi-bin/ssl_cert_validate"> Click Here </a>for more info</b>
+    <b>Please <a href="https://10.163.221.161/cgi-bin/ssl_cert_validate.py"> Click Here </a>for more info</b>
     <font size="4" face="Courier" color="salmon">
     </font>
     </p>
@@ -101,7 +97,7 @@ def email_warning(host):
     <font size="4" face="Courier" color="salmon">
     <b>Please initiate the SSL certificate reneval process soon...</b>
     <br>
-    <b>Please<a href="https://10.118.19.13/cgi-bin/ssl_cert_validate"> Click Here </a>for more info</b>
+    <b>Please<a href="https://10.163.221.161/cgi-bin/ssl_cert_validate.py"> Click Here </a>for more info</b>
     <font size="4" face="Courier" color="salmon">
     </font>
     </p>
@@ -167,7 +163,7 @@ def ssl_cert_check(host):
         if cert_nbefore > cur_date:
             output = "Error: The certs are invalid"
             result = "<font color=red>" + output
-            logalerts("%s ERROR: The certs are invalid"% (host))
+            logalerts("%s WARNING: ERROR: The certs are invalid"% (host))
         elif expire_days <= 0:
             output = "CRITICAL: SSL certs expired %s days ago"% expire_days
             email_critical(host)
@@ -184,56 +180,48 @@ def ssl_cert_check(host):
     except socket.error, exc:
         output = "%s to host" % exc
         result = "<font color=red>" + output
-        logalerts("%s ERROR: Connection refused"% (host))
+        logalerts("%s CRITICAL: ERROR: %s"% (host, exc))
     return result
-    
+
 def PutInHtml():
-    print("Content-encoding: none\nContent-Type: text/html\n\n")
+    print("Content-encoding: none\nContent-Type: text/html\n")
     print("""<html>
     <head>
-    <title>Open SSL Cert Expiry Check Tool</title>
-    <style type="text/css">
-     p
-     {
-        border: 2px slid black;
-        max-height: 2000px;
-        max-width:  1000px;
-        overflow: auto;
-        float: left;
-     }
-    </style>
+    <title>ssl cert expiry check</title>
     <style type="text/css">
     tr { background-color: #000000}
               .initial { background-color: #000000; color:#FFFFFF }
               .normal { background-color: #000000 }
               .highlight { background-color: #008000 }
-    div {width:100px;float:left;border:1px red solid;padding:10px;}
+    div {width:850px;float:left;border:0.5px red solid;padding:0;margin:0;}
     </style>
     <meta http-equiv=Pragma content=no-cache>
     <meta http-equiv=expires content=0>
     </head>
     <body style=color:white;background-color:#008000;font-family:sans-serif>
-    <hr color=gray><font size=6>Open SSL Cert Expiry Check Tool</font><hr color=gray><br>
+    <hr color=red><font size=6>Open SSL Cert Expiry Check Tool</font><hr color=red><br>
     """)
     print("""
+    <div style="height:500px; width:700px; overflow-x:scroll ; overflow-y: scroll; padding-bottom:10px;">
     <table border=1 cellpadding=10px>
     <tr>
     <td align=center>Domain</td>
-    <td align=center>Expiry Date and Time </td>
+    <td align=center>Expiry Info in Days</td>
     </tr>
+    </div>
     """)
 
 def main(host):
     result = ssl_cert_check(host)
     print("<tr onMouseOver=\"this.className='highlight'\" onMouseOut=\"this.className='normal'\"><td align=\"center\">" + host + "</td> \
-        <td align=\"center\">" + result + "</td></tr>")
+    <td align=\"center\">" + result + "</td></tr></div>")
     print("""</body></html>""")
 
 if __name__ == "__main__":
     config = configparser.RawConfigParser(allow_no_value=True)
     config.optionxform = str
     config.sections()
-    config.read('url.conf')
+    config.read('/var/www/cgi-bin/url.conf')
     URLs = config['urls']
     PutInHtml()
     for lines in URLs:
