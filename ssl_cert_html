@@ -34,7 +34,7 @@ def main():
     config.optionxform = str
     config.sections()
     config.read('/var/www/cgi-bin/url.conf')
-    URLs = config['SSL Sites']
+    URLs = config['urls']
     for url in URLs:
         p = subprocess.Popen("/usr/local/nagios/libexec/check_http --ssl=1+ -H " + url + " -C 180", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, universal_newlines=True)
         output, error = p.communicate()
