@@ -1,0 +1,61 @@
+#!/usr/bin/python
+import subprocess
+import configparser
+
+
+def main():
+    print("Content-encoding: none\nContent-Type: text/html\n")
+    print("""<html>
+    <head>
+    <title>ssl cert expiry check</title>
+    <style type="text/css">
+    tr { background-color: #000000}
+              .initial { background-color: #000000; color:#FFFFFF }
+              .normal { background-color: #000000 }
+              .highlight { background-color: #008000 }
+    div {width:850px;float:left;border:0.5px red solid;padding:0px;margin:0;}
+    </style>
+    <meta http-equiv=Pragma content=no-cache>
+    <meta http-equiv=expires content=0>
+    </head>
+    <body style=color:white;background-color:#008000;font-family:sans-serif>
+    <hr color=red><font size=6>Open SSL Cert Expiry Check Tool</font><hr color=red><br>
+    """)
+    print("""
+    <div style="height:500px; width:970px; overflow-x:scroll ; overflow-y: scroll; padding-bottom:10px;">
+    <table border=1 cellpadding=10px>
+    <tr>
+    <td align=center>Domain</td>
+    <td align=center>Expiry Info</td>
+    </tr>
+    </div>
+    """)
+    config = configparser.RawConfigParser(allow_no_value=True)
+    config.optionxform = str
+    config.sections()
+    config.read('/var/www/cgi-bin/url.conf')
+    URLs = config['SSL Sites']
+    for url in URLs:
+        p = subprocess.Popen("/usr/local/nagios/libexec/check_http --ssl=1+ -H " + url + " -C 180", stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True, universal_newlines=True)
+        output, error = p.communicate()
+        if 'OK' in output:
+            output = output.split('\n', 1)[-1]
+            result = "<font color=#52D017>" + output
+        elif 'WARNING' in output:
+            output = output.split('\n', 1)[-1]
+            head, sep, tail = output.partition('(s)')
+            output = head
+            result = "<font color=yellow>" + output
+        elif 'CRITICAL' in output:
+            output = output.split('\n', 1)[-1]
+            result = "<font color=red>" + output
+        else:
+            output = output.rsplit('check_http:', 1)[1]
+            result = "<font color=red>Failed - %s" %output
+
+        print("<tr onMouseOver=\"this.className='highlight'\" onMouseOut=\"this.className='normal'\"><td align=\"center\">" + url + "</td> \
+        <td align=\"center\">" + result + "</td></tr></div>")
+        print("""</body></html>""")
+
+if __name__ == "__main__":
+    main()
